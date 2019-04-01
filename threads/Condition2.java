@@ -20,8 +20,9 @@ public class Condition2 {
      *				lock whenever it uses <tt>sleep()</tt>,
      *				<tt>wake()</tt>, or <tt>wakeAll()</tt>.
      */
-    public Condition2(Lock conditionLock) {
-	this.conditionLock = conditionLock;
+    public Condition2(Lock conditionLock)
+	{
+		this.conditionLock = conditionLock;
     }
 
     /**
@@ -30,29 +31,48 @@ public class Condition2 {
      * current thread must hold the associated lock. The thread will
      * automatically reacquire the lock before <tt>sleep()</tt> returns.
      */
-    public void sleep() {
-	Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+    public void sleep()
+	{
+		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
 
-	conditionLock.release();
-
-	conditionLock.acquire();
+		conditionLock.release();
+		boolean intStatus=Machine.interrupt().disable();
+		waitQueue.waitForAccess(KThread.currentThread());
+		KThread.sleep();
+		Machine.interrupt().restore(intStatus);
+		conditionLock.acquire();
     }
 
     /**
      * Wake up at most one thread sleeping on this condition variable. The
      * current thread must hold the associated lock.
      */
-    public void wake() {
-	Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+    public void wake()
+	{
+		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+		boolean intStatus=Machine.interrupt().disable();
+		KThread a=waitQueue.nextThread();
+		if(a!=null) a.ready();
+		Machine.interrupt().restore(intStatus);
     }
 
     /**
      * Wake up all threads sleeping on this condition variable. The current
      * thread must hold the associated lock.
      */
-    public void wakeAll() {
-	Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+    public void wakeAll()
+	{
+		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+		boolean intStatus=Machine.interrupt().disable();
+		while(true)
+		{
+			KThread a=waitQueue.nextThread();
+			if(a!=null) a.ready();
+			else break;
+		}
+		Machine.interrupt().restore(intStatus);
     }
 
     private Lock conditionLock;
+	private ThreadQueue waitQueue=ThreadedKernel.scheduler.newThreadQueue(true);
 }

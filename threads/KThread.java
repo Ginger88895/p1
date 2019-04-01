@@ -193,6 +193,10 @@ public class KThread {
 
 
 	currentThread.status = statusFinished;
+
+	currentThread.condLock.acquire();
+	currentThread.joinCondition.wakeAll();
+	currentThread.condLock.release();
 	
 	sleep();
     }
@@ -276,6 +280,14 @@ public class KThread {
 	Lib.debug(dbgThread, "Joining to thread: " + toString());
 
 	Lib.assertTrue(this != currentThread);
+
+	if(status==statusFinished) return;
+	else
+	{
+		condLock.acquire();
+		joinCondition.sleep();
+		condLock.release();
+	}
 
     }
 
@@ -381,21 +393,75 @@ public class KThread {
 	Lib.assertTrue(this == currentThread);
     }
 
-    private static class PingTest implements Runnable {
-	PingTest(int which) {
-	    this.which = which;
-	}
-	
-	public void run() {
-	    for (int i=0; i<5; i++) {
-		System.out.println("*** thread " + which + " looped "
-				   + i + " times");
-		currentThread.yield();
-	    }
-	}
+    private static class PingTest implements Runnable
+	{
+		PingTest(int which,KThread other)
+		{
+			this.which=which;
+			this.other=other;
+		}
+		
+		public void run()
+		{
+			if(other!=null) other.join();
+			if(other!=null) other.join();
+			for(int i=0;i<5;i++)
+			{
+				System.out.println("*** thread " + which + " looped " + i + " times");
+				currentThread.yield();
+			}
+		}
 
-	private int which;
+		private int which;
+		private KThread other;
     }
+
+	private static class Condition2Test implements Runnable
+	{
+		Condition2Test(int id)
+		{
+			this.id=id;
+			this.wakeMode=-1;
+		}
+		Condition2Test(int id,int wakeMode)
+		{
+			this.id=id;
+			this.wakeMode=wakeMode;
+		}
+		public void run()
+		{
+			if(id==0)
+			{
+				for(int i=0;;i++)
+				{
+					if(i%100==0)
+					{
+						cond2Lock.acquire();
+						if(wakeMode==0) cond2.wake();
+						else cond2.wakeAll();
+						cond2Lock.release();
+					}
+					System.out.println("Main: "+i);
+					currentThread.yield();
+				}
+			}
+			else
+			{
+				for(int i=0;;i++)
+				{
+					cond2Lock.acquire();
+					cond2.sleep();
+					cond2Lock.release();
+					System.out.println("Thread "+id+" awakened! i="+i);
+					currentThread.yield();
+				}
+			}
+		}
+		private int id;
+		private int wakeMode;
+		private static Lock cond2Lock=new Lock();
+		private static Condition2 cond2=new Condition2(cond2Lock);
+	}
 
     /**
      * Tests whether this module is working.
@@ -403,8 +469,22 @@ public class KThread {
     public static void selfTest() {
 	Lib.debug(dbgThread, "Enter KThread.selfTest");
 	
-	new KThread(new PingTest(1)).setName("forked thread").fork();
-	new PingTest(0).run();
+	//new KThread(new PingTest(1)).setName("forked thread").fork();	
+	
+	//Test for KThread2.join()
+	/*
+	KThread t1=new KThread(new PingTest(1,null)).setName("forked thread");
+	t1.fork();
+	new PingTest(0,t1).run();
+	*/
+
+	//Test for Condition2
+	new KThread(new Condition2Test(1)).fork();
+	new KThread(new Condition2Test(2)).fork();
+	new KThread(new Condition2Test(3)).fork();
+	new KThread(new Condition2Test(4)).fork();
+	new Condition2Test(0,1).run();
+
     }
 
     private static final char dbgThread = 't';
@@ -444,4 +524,7 @@ public class KThread {
     private static KThread currentThread = null;
     private static KThread toBeDestroyed = null;
     private static KThread idleThread = null;
+
+	public Lock condLock=new Lock();
+	private Condition joinCondition=new Condition(condLock);
 }
