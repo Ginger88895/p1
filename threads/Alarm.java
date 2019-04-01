@@ -1,6 +1,7 @@
 package nachos.threads;
 
 import nachos.machine.*;
+import java.util.PriorityQueue;
 
 /**
  * Uses the hardware timer to provide preemption, and to allow threads to sleep
@@ -26,8 +27,23 @@ public class Alarm {
      * thread to yield, forcing a context switch if there is another thread
      * that should be run.
      */
-    public void timerInterrupt() {
-	KThread.currentThread().yield();
+    public void timerInterrupt()
+	{
+		KThread.currentThread().yield();
+		long curTime=Machine.timer().getTime();
+		while(true)
+		{
+			Condition curThread=waitQueue.peek();
+			if(waitQueue.peek()!=null&&waitQueue.peek().extra<=curTime)
+			{
+				waitQueue.poll();
+				Lock condLock=curThread.getLock();
+				condLock.acquire();
+				curThread.wakeAll();
+				condLock.release();
+			}
+			else break;
+		}
     }
 
     /**
@@ -44,10 +60,22 @@ public class Alarm {
      *
      * @see	nachos.machine.Timer#getTime()
      */
-    public void waitUntil(long x) {
-	// for now, cheat just to get something working (busy waiting is bad)
-	long wakeTime = Machine.timer().getTime() + x;
-	while (wakeTime > Machine.timer().getTime())
-	    KThread.yield();
-    }
+    public void waitUntil(long x)
+	{
+		// for now, cheat just to get something working (busy waiting is bad)
+		/* Code for busy waiting
+		long wakeTime=Machine.timer().getTime()+x;
+		while(wakeTime>Machine.timer().getTime()) KThread.yield();
+		*/
+		long wakeTime=Machine.timer().getTime()+x;
+		Lock condLock=new Lock();
+		Condition cond=new Condition(condLock,wakeTime);
+		condLock.acquire();
+		waitQueue.add(cond);
+		cond.sleep();
+		condLock.release();
+	}
+    	
+	private PriorityQueue<Condition> waitQueue=new PriorityQueue<Condition>();
 }
+

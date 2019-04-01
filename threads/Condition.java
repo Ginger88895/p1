@@ -49,7 +49,8 @@ import java.util.LinkedList;
  * gets a chance to run. The advance to Mesa-style semantics is that it is a
  * lot easier to implement.
  */
-public class Condition {
+public class Condition implements Comparable
+{
     /**
      * Allocate a new condition variable.
      *
@@ -58,11 +59,17 @@ public class Condition {
      *				lock whenever it uses <tt>sleep()</tt>,
      *				<tt>wake()</tt>, or <tt>wakeAll()</tt>.
      */
-    public Condition(Lock conditionLock) {
-	this.conditionLock = conditionLock;
-
-	waitQueue = new LinkedList<Semaphore>();
+    public Condition(Lock conditionLock)
+	{
+		this.conditionLock = conditionLock;
+		waitQueue = new LinkedList<Semaphore>();
     }
+	public Condition(Lock conditionLock,long extra)
+	{
+		this.conditionLock = conditionLock;
+		waitQueue = new LinkedList<Semaphore>();
+		this.extra=extra;
+	}
 
     /**
      * Atomically release the associated lock and go to sleep on this condition
@@ -109,6 +116,20 @@ public class Condition {
 	    wake();
     }
 
+	public Lock getLock()
+	{
+		return conditionLock;
+	}
+
+	public int compareTo(Object other)
+	{
+		if(extra<((Condition)other).extra) return -1;
+		else if (extra==((Condition)other).extra) return 0;
+		else return 1;
+	}
+
     private Lock conditionLock;
     private LinkedList<Semaphore> waitQueue;
+	public long extra;
 }
+

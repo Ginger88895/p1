@@ -276,18 +276,23 @@ public class KThread {
      * call is not guaranteed to return. This thread must not be the current
      * thread.
      */
-    public void join() {
-	Lib.debug(dbgThread, "Joining to thread: " + toString());
-
-	Lib.assertTrue(this != currentThread);
-
-	if(status==statusFinished) return;
-	else
+    public void join()
 	{
-		condLock.acquire();
-		joinCondition.sleep();
-		condLock.release();
-	}
+		Lib.debug(dbgThread, "Joining to thread: " + toString());
+
+		Lib.assertTrue(this != currentThread);
+
+		boolean intStatus=Machine.interrupt().disable();
+
+		if(status==statusFinished) return;
+		else
+		{
+			condLock.acquire();
+			joinCondition.sleep();
+			condLock.release();
+		}
+
+		Machine.interrupt().restore(intStatus);
 
     }
 
@@ -463,6 +468,38 @@ public class KThread {
 		private static Condition2 cond2=new Condition2(cond2Lock);
 	}
 
+	private static class AlarmTest implements Runnable
+	{
+		AlarmTest(int id,int duration)
+		{
+			this.id=id;
+			this.duration=duration;
+		}
+		public void run()
+		{
+			if(id<=4)
+			{
+				while(true)
+				{
+					long before=Machine.timer().getTime();
+					ThreadedKernel.alarm.waitUntil(duration);
+					long after=Machine.timer().getTime();
+					System.out.println("Thread "+id+" slept for "+(after-before)+" ticks");
+				}
+			}
+			else
+			{
+				while(true)
+				{
+					System.out.println("Thread "+id+" is alive!");
+					currentThread.yield();
+				}
+			}
+		}
+		private int id;
+		private int duration;
+	}
+
     /**
      * Tests whether this module is working.
      */
@@ -479,11 +516,20 @@ public class KThread {
 	*/
 
 	//Test for Condition2
+	/*
 	new KThread(new Condition2Test(1)).fork();
 	new KThread(new Condition2Test(2)).fork();
 	new KThread(new Condition2Test(3)).fork();
 	new KThread(new Condition2Test(4)).fork();
 	new Condition2Test(0,1).run();
+	*/
+
+	//Test for waitUntil
+	new KThread(new AlarmTest(1,10000000)).fork();
+	new KThread(new AlarmTest(2,10000000)).fork();
+	new KThread(new AlarmTest(3,10000000)).fork();
+	new KThread(new AlarmTest(4,10000000)).fork();
+	new AlarmTest(0,50000000).run();
 
     }
 
