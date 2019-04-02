@@ -9,11 +9,13 @@ import nachos.machine.*;
  * be a time when both a speaker and a listener are waiting, because the two
  * threads can be paired off at this point.
  */
-public class Communicator {
+public class Communicator
+{
     /**
      * Allocate a new communicator.
      */
-    public Communicator() {
+    public Communicator()
+	{
     }
 
     /**
@@ -26,7 +28,26 @@ public class Communicator {
      *
      * @param	word	the integer to transfer.
      */
-    public void speak(int word) {
+    public void speak(int word)
+	{
+		condLock.acquire();
+		if(protect==1) condProtect.sleep();
+		speakers++;
+		protect=1;
+		if(listeners==0)
+		{
+			condSpeaker.sleep();
+			message=word;
+			condPaired.wake();
+		}
+		else
+		{
+			message=word;
+			listeners--;
+			speakers--;
+			condListener.wake();
+		}
+		condLock.release();
     }
 
     /**
@@ -35,7 +56,34 @@ public class Communicator {
      *
      * @return	the integer transferred.
      */    
-    public int listen() {
-	return 0;
+    public int listen()
+	{
+		int ret=0;
+		condLock.acquire();
+		listeners++;
+		if(speakers==0) condListener.sleep();
+		else
+		{
+			speakers--;
+			listeners--;
+			condSpeaker.wake();
+			condPaired.sleep();
+		}
+		ret=message;
+		protect=0;
+		condProtect.wake();
+		condLock.release();
+		return ret;
     }
+
+	private int speakers=0;
+	private int listeners=0;
+	private int protect=0;
+	private int message=0;
+	private Lock condLock=new Lock();
+	private Condition condProtect=new Condition(condLock);
+	private Condition condSpeaker=new Condition(condLock);
+	private Condition condListener=new Condition(condLock);
+	private Condition condPaired=new Condition(condLock);
 }
+

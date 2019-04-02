@@ -1,6 +1,7 @@
 package nachos.threads;
 
 import nachos.machine.*;
+import java.util.Random;
 
 /**
  * A KThread is a thread that can be used to execute Nachos kernel code. Nachos
@@ -500,6 +501,44 @@ public class KThread {
 		private int duration;
 	}
 
+	private static class ComTest implements Runnable
+	{
+		ComTest(int id,Communicator com)
+		{
+			this.id=id;
+			this.com=com;
+		}
+		public void run()
+		{
+			if(id<=48)
+			{
+				Random rand=new Random();
+				while(true)
+				{
+					int x=rand.nextInt(100);
+					System.out.println("Thread "+id+" speaking: "+x);
+					com.speak(x);
+					System.out.println("Thread "+id+" finished speaking: "+x);
+					ThreadedKernel.alarm.waitUntil(10000000);
+					//System.out.println("Thread "+id+" slept for "+(after-before)+" ticks");
+				}
+			}
+			else
+			{
+				while(true)
+				{
+					System.out.println("Thread "+id+" listening");
+					int x=com.listen();
+					System.out.println("Thread "+id+" received "+x);
+					ThreadedKernel.alarm.waitUntil(10000000);
+					//System.out.println("Thread "+id+" slept for "+(after-before)+" ticks");
+				}
+			}
+		}
+		private int id;
+		private Communicator com;
+	}
+
     /**
      * Tests whether this module is working.
      */
@@ -525,11 +564,18 @@ public class KThread {
 	*/
 
 	//Test for waitUntil
+	/*
 	new KThread(new AlarmTest(1,10000000)).fork();
 	new KThread(new AlarmTest(2,10000000)).fork();
 	new KThread(new AlarmTest(3,10000000)).fork();
 	new KThread(new AlarmTest(4,10000000)).fork();
 	new AlarmTest(0,50000000).run();
+	*/
+
+	//Test for Communicator
+	Communicator com=new Communicator();
+	for(int i=1;i<50;i++) new KThread(new ComTest(i,com)).fork();
+	new ComTest(0,com).run();
 
     }
 
