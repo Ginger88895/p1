@@ -90,7 +90,7 @@ public class Semaphore {
 	Semaphore ping = new Semaphore(0);
 	Semaphore pong = new Semaphore(0);
 
-	new KThread(new PingTest(ping, pong)).setName("ping").fork();
+	new KThread(new PingTest(ping, pong)).setName("ping1").fork();
 
 	for (int i=0; i<10; i++) {
 	    ping.V();

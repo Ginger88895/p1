@@ -539,6 +539,57 @@ public class KThread {
 		private Communicator com;
 	}
 
+	private static class DonationTest implements Runnable
+	{
+		DonationTest(int id,int priority,Lock myLock)
+		{
+			this.id=id;
+			this.priority=priority;
+			this.myLock=myLock;
+		}
+		public void setThread(KThread thread)
+		{
+			this.thread=thread;
+		}
+		public void setOther(KThread other)
+		{
+			this.other=other;
+		}
+		public void run()
+		{
+			boolean intStatus=Machine.interrupt().disable();
+			ThreadedKernel.scheduler.setPriority(thread,priority);
+			Machine.interrupt().restore(intStatus);
+			while(true)
+			{
+				//ThreadedKernel.alarm.waitUntil(1);
+
+				KThread.yield();
+				myLock.acquire();
+				KThread.yield();
+
+				intStatus=Machine.interrupt().disable();
+				System.out.println("Effective priority for thread "+thread+" is "+ThreadedKernel.scheduler.getEffectivePriority(thread));
+				//System.out.println("Effective priority for thread "+other+" is "+ThreadedKernel.scheduler.getEffectivePriority(other));
+				Machine.interrupt().restore(intStatus);
+
+				KThread.yield();
+				myLock.release();
+				KThread.yield();
+
+				priority=7-priority;
+				intStatus=Machine.interrupt().disable();
+				ThreadedKernel.scheduler.setPriority(thread,priority);
+				Machine.interrupt().restore(intStatus);
+			}
+		}
+		private int id;
+		private Lock myLock;
+		private int priority;
+		private KThread thread;
+		private KThread other;
+	}
+
     /**
      * Tests whether this module is working.
      */
@@ -550,6 +601,9 @@ public class KThread {
 	//Test for KThread2.join()
 	/*
 	KThread t1=new KThread(new PingTest(1,null)).setName("forked thread");
+	boolean intStatus=Machine.interrupt().disable();
+	ThreadedKernel.scheduler.setPriority(t1,0);
+	Machine.interrupt().restore(intStatus);
 	t1.fork();
 	new PingTest(0,t1).run();
 	*/
@@ -573,9 +627,30 @@ public class KThread {
 	*/
 
 	//Test for Communicator
+	/*
 	Communicator com=new Communicator();
 	for(int i=1;i<50;i++) new KThread(new ComTest(i,com)).fork();
 	new ComTest(0,com).run();
+	*/
+
+	//Test for Donation
+	/*
+	Lock myLock=new Lock();
+
+	DonationTest d1=new DonationTest(1,2,myLock);
+	KThread t1=new KThread(d1);
+	d1.setThread(t1);
+
+	DonationTest d2=new DonationTest(2,5,myLock);
+	KThread t2=new KThread(d2);
+	d2.setThread(t2);
+
+	d1.setOther(t2);
+	d2.setOther(t1);
+
+	t2.fork();
+	d1.run();
+	*/
 
     }
 
@@ -620,3 +695,4 @@ public class KThread {
 	public Lock condLock=new Lock();
 	private Condition joinCondition=new Condition(condLock);
 }
+
