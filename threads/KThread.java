@@ -562,11 +562,9 @@ public class KThread {
 			Machine.interrupt().restore(intStatus);
 			while(true)
 			{
-				//ThreadedKernel.alarm.waitUntil(1);
+				ThreadedKernel.alarm.waitUntil(1);
 
-				KThread.yield();
 				myLock.acquire();
-				KThread.yield();
 
 				intStatus=Machine.interrupt().disable();
 				System.out.println("Effective priority for thread "+thread+" is "+ThreadedKernel.scheduler.getEffectivePriority(thread));
@@ -574,10 +572,9 @@ public class KThread {
 				Machine.interrupt().restore(intStatus);
 
 				KThread.yield();
-				myLock.release();
-				KThread.yield();
 
-				priority=7-priority;
+				myLock.release();
+
 				intStatus=Machine.interrupt().disable();
 				ThreadedKernel.scheduler.setPriority(thread,priority);
 				Machine.interrupt().restore(intStatus);
@@ -634,10 +631,9 @@ public class KThread {
 	*/
 
 	//Test for Donation
-	/*
 	Lock myLock=new Lock();
 
-	DonationTest d1=new DonationTest(1,2,myLock);
+	DonationTest d1=new DonationTest(1,3,myLock);
 	KThread t1=new KThread(d1);
 	d1.setThread(t1);
 
@@ -650,7 +646,6 @@ public class KThread {
 
 	t2.fork();
 	d1.run();
-	*/
 
     }
 

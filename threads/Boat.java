@@ -10,7 +10,7 @@ public class Boat
 		BoatGrader b = new BoatGrader();
 		
 		System.out.println("\n ***Testing Boats with only 2 children***");
-		begin(100, 100, b);
+		begin(100, 4, b);
 
 		/*
 		System.out.println("\n ***Testing Boats with 2 children, 1 adult***");
@@ -109,11 +109,17 @@ public class Boat
 				ship1.V();
 				adult0.V();
 				position=1;
+
+				condLock1.acquire();
+				cond1.wake();
+				condLock1.release();
 			}
 			else
 			{
+				adult1.P();
 				while(true)
 				{
+					ship1.P();
 					numLock.acquire();
 					int x=passed_children;
 					numLock.release();
@@ -121,13 +127,12 @@ public class Boat
 						break;
 					else
 					{
+						ship1.V();
 						condLock1.acquire();
 						cond1.sleep();
 						condLock1.release();
 					}
 				}
-				adult1.P();
-				ship1.P();
 				bg.AdultRowToOahu();
 				numLock.acquire();
 				passed_adults-=1;
@@ -181,9 +186,7 @@ public class Boat
 					child0.V();
 					child0.V();
 					ship1.V();
-					condLock1.acquire();
-					cond1.wakeAll();
-					condLock1.release();
+
 				}
 				position=1;
 			}
@@ -219,8 +222,10 @@ public class Boat
     }
 
 	static int boatPosition=0;
+
 	static int num_adults=0;
 	static int num_children=0;
+
 	static int passed_adults=0;
 	static int passed_children=0;
 
